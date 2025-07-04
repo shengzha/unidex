@@ -20,6 +20,34 @@ if (-e "$ENV{'HOME'}/.unidex.cfg") {
 	print STDERR "INFO: Special config file detected as first argument. ($ARGV[0])\n";
 }
 
+
+# shengzha 250704 >>> function to do absolute path check and script directory lookup
+use File::Spec;
+use Cwd 'abs_path';
+sub check_file {
+    my ($f, $fatal) = @_;
+    $fatal //= 1;  # Default to true if not provided.
+
+    # If it's an absolute path and the file exists
+    if (File::Spec->file_name_is_absolute($f) && -e $f) {
+        return abs_path($f);
+    }
+    # Otherwise, check in $RealBin/
+    my $bin_path = File::Spec->catfile($RealBin, $f);
+    if (-e $bin_path) {
+        return abs_path($bin_path);
+    }
+
+	# File not found
+    if ($fatal) {
+        die "ERROR: File: $f does not exist!\n"
+    } else {
+        return undef;
+    }
+}
+# shengzha 250704 <<<
+
+
 open CFG, "$DEFAULTS_FILE";
 while ($l = <CFG>) {
 	if ($l !~/^#/) {
@@ -108,9 +136,17 @@ $input_params = join(" ", @ARGV);
 # load & parse options
 getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uLI:lc:n:p:t:", \%opt);
 
+
+# shengzha 250704 >>> check if mode file exists
+if (defined $opt{'m'}) {$modes_file = $opt{'m'}};
+$modes_file = check_file($modes_file);
+# shengzha 250704 <<<
+
+
+
 # first check if mode file is queried
 if (defined $opt{'L'}) {
-	if (defined $opt{'m'}) {$modes_file = $opt{'m'}};
+	# if (defined $opt{'m'}) {$modes_file = $opt{'m'}};
 	print "\nUnidex modes file: $modes_file\nModes present:\n";
 	open MODES, "$modes_file";
 	while ($l = <MODES>) {
@@ -136,7 +172,7 @@ if (defined $opt{'L'}) {
 
 # see if mode info is requested
 if (defined $opt{'I'}) {
-	if (defined $opt{'m'}) {$modes_file = $opt{'m'}};
+	# if (defined $opt{'m'}) {$modes_file = $opt{'m'}};
 	@MODES_LIST = split(/,/, $opt{'I'});
 	foreach $mode (@MODES_LIST) {$MODES{$mode} = 0};
 	print "\nUnidex modes file: $modes_file\n";
@@ -151,7 +187,7 @@ if (defined $opt{'I'}) {
 					print  "\t\t$P[$i] ";
 					($index_number,$file) = split(/=/, $P[$i]);
 					if ($index_number =~ /^index/) {
-						if (-e "$file") {
+						if (defined check_file($file, 0)) {
 							print "(Exists!)\n";
 						} else {
 							print "(Does not exist!)\n";
@@ -191,12 +227,16 @@ if (!defined $opt{'M'}) {
 }
 if (defined $opt{'r'}) {$fastq_path = $opt{'r'}}; $fastq_path =~ s/\/$//;
 if (defined $opt{'o'}) {$dex_path = $opt{'o'}}; $dex_path =~ s/\/$//;
-if (defined $opt{'m'}) {$modes_file = $opt{'m'}};
+# if (defined $opt{'m'}) {$modes_file = $opt{'m'}};
 if (!defined $opt{'O'}) {$opt{'O'} = $opt{'R'}};
 if (defined $opt{'D'}) {$def_hd = $opt{'D'}};
 $out_name = $opt{'O'}; $out_name =~ s/\/$//;
 $run_name = $opt{'R'}; $run_name =~ s/\/$//;
 if (defined $opt{'c'}) {$triplet2ascii_file = $opt{'c'}};
+# shengzha 250704: check if triplet2ascii_file exists
+$triplet2ascii_file = check_file($triplet2ascii_file);
+
+
 
 # annotation loading
 if (defined $opt{'A'}) {
@@ -592,9 +632,10 @@ sub revcomp {
 foreach $mode (@MODES_LIST) {
 	foreach $index_number (keys %{$INDEX_FILES{$mode}{'index'}}) {
 		$trim_warn = 0;
-		{print STDERR "INFO: Mode: $mode, Index: $index_number, File = $INDEX_FILES{$mode}{'index'}{$index_number}\n"};
-		if (-e "$INDEX_FILES{$mode}{'index'}{$index_number}") {} else {die "ERROR: File: $INDEX_FILES{$mode}{'index'}{$index_number} does not exist!\n"};
-		open IN, "$INDEX_FILES{$mode}{'index'}{$index_number}";
+		$idx_f = check_file($INDEX_FILES{$mode}{'index'}{$index_number});
+		{print STDERR "INFO: Mode: $mode, Index: $index_number, File = $idx_f\n"};
+		# if (-e "$INDEX_FILES{$mode}{'index'}{$index_number}") {} else {die "ERROR: File: $INDEX_FILES{$mode}{'index'}{$index_number} does not exist!\n"};
+		open IN, "$idx_f";
 		while ($l = <IN>) {
 			chomp $l;
 			@P = split(/\t/, $l);

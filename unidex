@@ -408,30 +408,31 @@ while ($l = <MODES>) {
 					# check that the fastq is present in the directory for that mode
 					if ($read_present[$i] eq "false") {die "ERROR: mode $mode requires read ID $i and the fastq could not be detected or was not specified!\n"};
 					$pos = 0;
-					@READ_PARTS = split(/,/, $P[$i]);
+					@READ_PARTS = split(/,/, $P[$i]); # 1st split by comma to @READ_PARTS ($part)
 					for ($part = 0; $part < @READ_PARTS; $part++) {
-						($part_name,$part_length) = split(/:/, $READ_PARTS[$part]);
+						($part_name,$part_length) = split(/:/, $READ_PARTS[$part]);  # 2nd split $part by colon to $part_name and $part_length
 						{print STDERR "\tname = $part_name, length = $part_length\n"};
-						if ($part_name =~ /read/i) {
-							$read_number = $part_name; $read_number =~ s/read//i;
+						if ($part_name =~ /read/i) { # if $part_name contains the substring "read" (case-insensitive).
+							$read_number = $part_name; $read_number =~ s/read//i; # $read_number is $part_name with "read" (case-insensitive) removed
 							if (!defined $DEX_PARTS{$mode}{'read'}{$read_number}) {
 								@{$DEX_PARTS{$mode}{'read'}{$read_number}} = ($i,$pos,$part_length);
 								$pos+=$part_length;
 							} else {
 								die "ERROR: Two instances of read - $read_number were specified in the mode configuration for $mode!\n";
 							}
-						} elsif ($part_name =~ /index/i) {
+						} elsif ($part_name =~ /index/i) { # if $part_name contains the substring "index" (case-insensitive).
 							if ($part_length < 1) {die "ERROR: Index lengths must be specified (ie cannot be '0' for rest of read), issue index: $mode, $part_name\n"};
-							$index_number = $part_name; $index_number =~ s/index//i;
+							$index_number = $part_name; $index_number =~ s/index//i; # $index_number is $part_name with "index" (case-insensitive) removed,
+							# but note that $index_number can contain HD override and/or revcomp (e.g. 1=1r oe 1=r1); need further split
 							$MODE_ixCT{$mode}++;
-							if ($index_number =~ /=/) { # HD override and/or revcomp found
+							if ($index_number =~ /=/) { # if $index_number contains "=", HD override and/or revcomp found
 								($number,$hd) = split(/=/, $index_number);
 								$index_number = $number;
-								if ($hd =~ /r/i) {
-									$hd =~ s/r//i;
+								if ($hd =~ /r/i) {  # if contains "r", revcomp found
+									$hd =~ s/r//i; # remove r from $hd to proceed with hd check
 									$DEX_PARTS{$mode}{'index_rev'}{$index_number} = 1;
 								}
-								if ($hd ne "") {
+								if ($hd ne "") { # if not empty
 									$INDEX_HAMMING{$mode}{'index'}{$index_number} = $hd;
 								} else {
 									$INDEX_HAMMING{$mode}{'index'}{$index_number} = $def_hd;

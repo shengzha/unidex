@@ -387,7 +387,7 @@ if (defined $opt{'V'}) {print STDERR "INFO: index 2 fastq = $index2_fastq\n"};
 open MODES, "$modes_file";
 while ($l = <MODES>) {
 	chomp $l;
-	if ($1 =~ /^##/) {
+	if ($l =~ /^##/) {
 		# comment lines
 	} elsif ($l =~ /^#/) {
 		@HEADER = split(/\t/, $l);

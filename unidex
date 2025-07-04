@@ -355,15 +355,15 @@ while ($l = <MODES>) {
 		@P = split(/\s/, $l);
 		$mode = $P[0];
 		if (defined $MODES{$mode}) {
-			if (defined $opt{'V'}) {print STDERR "INFO: Mode $mode found. Parsing...\n"};
+			{print STDERR "INFO: Mode $mode found. Parsing...\n"};
 			$MODES{$mode} = 1;
 			# parse the four reads and store information on components
 			%{$DEX_PARTS{$mode}} = ();
 			%{$INDEX_FILES{$mode}} = ();
 			for ($i = 1; $i <= 4; $i++) { # parse the four fastq reads
-				if (defined $opt{'V'}) {print STDERR "INFO: parsing read $i: $P[$i]\n"};
+				{print STDERR "INFO: parsing read $i: $P[$i]\n"};
 				if ($P[$i] =~ /unused/i) {
-					if (defined $opt{'V'}) {print STDERR "\t$HEADER[$i] is unused.\n"};
+					{print STDERR "\t$HEADER[$i] is unused.\n"};
 				} else {
 					# check that the fastq is present in the directory for that mode
 					if ($read_present[$i] eq "false") {die "ERROR: mode $mode requires read ID $i and the fastq could not be detected or was not specified!\n"};
@@ -371,7 +371,7 @@ while ($l = <MODES>) {
 					@READ_PARTS = split(/,/, $P[$i]);
 					for ($part = 0; $part < @READ_PARTS; $part++) {
 						($part_name,$part_length) = split(/:/, $READ_PARTS[$part]);
-						if (defined $opt{'V'}) {print STDERR "\tname = $part_name, length = $part_length\n"};
+						{print STDERR "\tname = $part_name, length = $part_length\n"};
 						if ($part_name =~ /read/i) {
 							$read_number = $part_name; $read_number =~ s/read//i;
 							if (!defined $DEX_PARTS{$mode}{'read'}{$read_number}) {
@@ -399,9 +399,9 @@ while ($l = <MODES>) {
 							} else {
 								$INDEX_HAMMING{$mode}{'index'}{$index_number} = $def_hd;
 							}
-							if (defined $opt{'V'}) {print STDERR "INFO: mode $mode, index number $index_number hamming distance set to: $INDEX_HAMMING{$mode}{'index'}{$index_number}.\n"};
+							{print STDERR "INFO: mode $mode, index number $index_number hamming distance set to: $INDEX_HAMMING{$mode}{'index'}{$index_number}.\n"};
 							if (!defined $DEX_PARTS{$mode}{'index'}{$index_number}) {
-								if (defined $opt{'V'}) {print STDERR "INFO: mode $mode, index number $index_number being stored.\n"};
+								{print STDERR "INFO: mode $mode, index number $index_number being stored.\n"};
 								if ($part_length =~ /sub/) {
 									($region_length,$index_length) = split(/sub/, $part_length);
 									$DEX_PARTS{$mode}{'subset'}{$index_number} = $index_length;
@@ -431,14 +431,14 @@ while ($l = <MODES>) {
 			}
 			
 			# report stored components
-			if (defined $opt{'V'}) {
+			# if (defined $opt{'V'}) {
 				print STDERR "INFO: Mode $mode stored components:\n";
 				foreach $class (keys %{$DEX_PARTS{$P[0]}}) {
 					foreach $component (keys %{$DEX_PARTS{$P[0]}{$class}}) {
 						print STDERR "\t$class\t$component = $DEX_PARTS{$mode}{$class}{$component}[0],$DEX_PARTS{$mode}{$class}{$component}[1],$DEX_PARTS{$mode}{$class}{$component}[2]\n";
 					}
 				}
-			}
+			# }
 			
 			# load index file locations & special flags
 			$MODE_SPECIAL{$mode}{'batch_size'} = 0; # set default batch size to 0 (all reads)
@@ -587,12 +587,12 @@ sub revcomp {
 
 # Generating hamming distance hashes
 
-if (defined $opt{'V'}) {print STDERR "INFO: Generating hamming hashes ...\n"};
+{print STDERR "INFO: Generating hamming hashes ...\n"};
 %MODE_IXN_CHECK_true = ();
 foreach $mode (@MODES_LIST) {
 	foreach $index_number (keys %{$INDEX_FILES{$mode}{'index'}}) {
 		$trim_warn = 0;
-		if (defined $opt{'V'}) {print STDERR "INFO: Mode: $mode, Index: $index_number, File = $INDEX_FILES{$mode}{'index'}{$index_number}\n"};
+		{print STDERR "INFO: Mode: $mode, Index: $index_number, File = $INDEX_FILES{$mode}{'index'}{$index_number}\n"};
 		if (-e "$INDEX_FILES{$mode}{'index'}{$index_number}") {} else {die "ERROR: File: $INDEX_FILES{$mode}{'index'}{$index_number} does not exist!\n"};
 		open IN, "$INDEX_FILES{$mode}{'index'}{$index_number}";
 		while ($l = <IN>) {
@@ -633,9 +633,9 @@ foreach $mode (@MODES_LIST) {
 		
 		# make HD hash
 		if ($INDEX_HAMMING{$mode}{'index'}{$index_number} > 0) {
-			if (defined $opt{'V'}) {print STDERR "\tIndex $index_number HD = $INDEX_HAMMING{$mode}{'index'}{$index_number}, making HD hash.\n"};
+			{print STDERR "\tIndex $index_number HD = $INDEX_HAMMING{$mode}{'index'}{$index_number}, making HD hash.\n"};
 			for ($hd_round = 1; $hd_round <= $INDEX_HAMMING{$mode}{'index'}{$index_number}; $hd_round++) {
-				if (defined $opt{'V'}) {print STDERR "\t\tHD Round = $hd_round\n"};
+				{print STDERR "\t\tHD Round = $hd_round\n"};
 				%HDSEQ_true = ();
 				foreach $seq (keys %{$MODE_IXN_CHECK_true{$mode}{$index_number}}) {
 					$true = $MODE_IXN_CHECK_true{$mode}{$index_number}{$seq};

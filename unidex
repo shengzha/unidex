@@ -93,9 +93,6 @@ Other Options:
   -n  [INT]   Only process the first n reads of the input fastq (def = all)
   -c  [STR]   File for compressing base triplets in reads names. ($triplet2ascii_file)
                 It is strongly discouraged to use a different file for this.
-  -g  [STR]   Gzip command (def = $gzip)
-  -z  [STR]   Zcat command (def = $zcat)
-  -p  [STR]   Pigz command (def = $pigz)
   -V          Verbose / debug mode (outputs to STDERR)
 
 ";
@@ -106,7 +103,7 @@ if (!defined $ARGV[0]) {die $die};
 $call = "unidex @ARGV";
 
 # load & parse options
-getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uLI:lc:n:p:t:", \%opt);
+getopts("R:M:O:r:o:m:1:2:3:4:D:VA:uLI:lc:n:t:", \%opt);
 
 
 # function to do absolute path check and script directory lookup

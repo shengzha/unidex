@@ -103,14 +103,43 @@ Other Options:
 # die on naked call
 if (!defined $ARGV[0]) {die $die};
 
-$input_params = join(" ", @ARGV);
+$call = "unidex @ARGV";
 
 # load & parse options
 getopts("R:M:O:r:o:m:1:2:3:4:D:VS:g:A:uLI:lc:n:p:t:", \%opt);
 
+
+# function to do absolute path check and script directory lookup
+use File::Spec;
+sub resolve_path {
+	my ($f, $fatal) = @_;
+	$fatal //= 1;  # Default to true if not provided.
+
+	# If it's an absolute path and the file exists
+	if (File::Spec->file_name_is_absolute($f) && -e $f) {
+		return Cwd::abs_path($f);
+	}
+	# Otherwise, check in $RealBin/
+	my $bin_path = File::Spec->catfile($RealBin, $f);
+	if (-e $bin_path) {
+		return Cwd::abs_path($bin_path);
+	}
+
+	# File not found
+	if ($fatal) {
+		die "ERROR: File $f does not exist!\n"
+	} else {
+		return undef;
+	}
+}
+
+
+# check if mode file exists
+if (defined $opt{'m'}) {$modes_file = $opt{'m'}};
+$modes_file = resolve_path($modes_file);
+
 # first check if mode file is queried
 if (defined $opt{'L'}) {
-	if (defined $opt{'m'}) {$modes_file = $opt{'m'}};
 	print "\nUnidex modes file: $modes_file\nModes present:\n";
 	open MODES, "$modes_file";
 	while ($l = <MODES>) {
@@ -136,7 +165,6 @@ if (defined $opt{'L'}) {
 
 # see if mode info is requested
 if (defined $opt{'I'}) {
-	if (defined $opt{'m'}) {$modes_file = $opt{'m'}};
 	@MODES_LIST = split(/,/, $opt{'I'});
 	foreach $mode (@MODES_LIST) {$MODES{$mode} = 0};
 	print "\nUnidex modes file: $modes_file\n";
@@ -151,7 +179,7 @@ if (defined $opt{'I'}) {
 					print  "\t\t$P[$i] ";
 					($index_number,$file) = split(/=/, $P[$i]);
 					if ($index_number =~ /^index/) {
-						if (-e "$file") {
+						if (defined resolve_path($file, 0)) {
 							print "(Exists!)\n";
 						} else {
 							print "(Does not exist!)\n";
@@ -191,7 +219,6 @@ if (!defined $opt{'M'}) {
 }
 if (defined $opt{'r'}) {$fastq_path = $opt{'r'}}; $fastq_path =~ s/\/$//;
 if (defined $opt{'o'}) {$dex_path = $opt{'o'}}; $dex_path =~ s/\/$//;
-if (defined $opt{'m'}) {$modes_file = $opt{'m'}};
 if (!defined $opt{'O'}) {$opt{'O'} = $opt{'R'}};
 if (defined $opt{'D'}) {$def_hd = $opt{'D'}};
 $out_name = $opt{'O'}; $out_name =~ s/\/$//;
@@ -258,7 +285,7 @@ if (defined $opt{'A'}) {
 
 # first check if it is in delayed mode
 if (defined $opt{'l'}) {
-	if (!defined $opt{'R'}) {die "\nERROR: delayed mode only works when the run folder is specified!\n$die"};
+	if (!defined $opt{'R'}) {die "\nERROR: Delayed mode only works when the run folder is specified!\n$die"};
 	system("slack -m \"Delayed unidex for run $run_name started.\nModes Specified: $opt{'M'}\nWaiting for completed fastq files...\" sequencing_runs");
 	$prop_complete = 0;
 	$sleep_count = 0;
@@ -289,7 +316,6 @@ if (defined $opt{'l'}) {
 }
 
 # identify input fastq files
-
 if (!defined $opt{'1'}) {
 	if (-e "$fastq_path/$run_name/Undetermined_S0_L001_R1_001.fastq.gz") {
 		$read1_fastq = "$fastq_path/$run_name/Undetermined_S0_L001_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L002_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L003_R1_001.fastq.gz $fastq_path/$run_name/Undetermined_S0_L004_R1_001.fastq.gz";
@@ -347,7 +373,7 @@ if (defined $opt{'V'}) {print STDERR "INFO: index 2 fastq = $index2_fastq\n"};
 open MODES, "$modes_file";
 while ($l = <MODES>) {
 	chomp $l;
-	if ($1 =~ /^##/) {
+	if ($l =~ /^##/) {
 		# comment lines
 	} elsif ($l =~ /^#/) {
 		@HEADER = split(/\t/, $l);
@@ -366,32 +392,33 @@ while ($l = <MODES>) {
 					if (defined $opt{'V'}) {print STDERR "\t$HEADER[$i] is unused.\n"};
 				} else {
 					# check that the fastq is present in the directory for that mode
-					if ($read_present[$i] eq "false") {die "ERROR: mode $mode requires read ID $i and the fastq could not be detected or was not specified!\n"};
+					if ($read_present[$i] eq "false") {die "ERROR: Mode $mode requires read ID $i and the fastq could not be detected or was not specified!\n"};
 					$pos = 0;
-					@READ_PARTS = split(/,/, $P[$i]);
+					@READ_PARTS = split(/,/, $P[$i]); # 1st split by comma to @READ_PARTS ($part)
 					for ($part = 0; $part < @READ_PARTS; $part++) {
-						($part_name,$part_length) = split(/:/, $READ_PARTS[$part]);
+						($part_name,$part_length) = split(/:/, $READ_PARTS[$part]);  # 2nd split $part by colon to $part_name and $part_length
 						if (defined $opt{'V'}) {print STDERR "\tname = $part_name, length = $part_length\n"};
-						if ($part_name =~ /read/i) {
-							$read_number = $part_name; $read_number =~ s/read//i;
+						if ($part_name =~ /read/i) { # if $part_name contains the substring "read" (case-insensitive).
+							$read_number = $part_name; $read_number =~ s/read//i; # $read_number is $part_name with "read" (case-insensitive) removed
 							if (!defined $DEX_PARTS{$mode}{'read'}{$read_number}) {
 								@{$DEX_PARTS{$mode}{'read'}{$read_number}} = ($i,$pos,$part_length);
 								$pos+=$part_length;
 							} else {
 								die "ERROR: Two instances of read - $read_number were specified in the mode configuration for $mode!\n";
 							}
-						} elsif ($part_name =~ /index/i) {
+						} elsif ($part_name =~ /index/i) { # if $part_name contains the substring "index" (case-insensitive).
 							if ($part_length < 1) {die "ERROR: Index lengths must be specified (ie cannot be '0' for rest of read), issue index: $mode, $part_name\n"};
-							$index_number = $part_name; $index_number =~ s/index//i;
+							$index_number = $part_name; $index_number =~ s/index//i; # $index_number is $part_name with "index" (case-insensitive) removed,
+							# but note that $index_number can contain HD override and/or revcomp (e.g. 1=1r oe 1=r1); need further split
 							$MODE_ixCT{$mode}++;
-							if ($index_number =~ /=/) { # HD override and/or revcomp found
+							if ($index_number =~ /=/) { # if $index_number contains "=", HD override and/or revcomp found
 								($number,$hd) = split(/=/, $index_number);
 								$index_number = $number;
-								if ($hd =~ /r/i) {
-									$hd =~ s/r//i;
+								if ($hd =~ /r/i) {  # if contains "r", revcomp found
+									$hd =~ s/r//i; # remove r from $hd to proceed with hd check
 									$DEX_PARTS{$mode}{'index_rev'}{$index_number} = 1;
 								}
-								if ($hd ne "") {
+								if ($hd ne "") { # if not empty
 									$INDEX_HAMMING{$mode}{'index'}{$index_number} = $hd;
 								} else {
 									$INDEX_HAMMING{$mode}{'index'}{$index_number} = $def_hd;
@@ -517,6 +544,8 @@ while ($l = <MODES>) {
 } close MODES;
 
 if ($ASCII_USE>0) {
+	# check if triplet2ascii_file exists
+	$triplet2ascii_file = resolve_path($triplet2ascii_file);
 	# load ascii conversion file
 	open T2A, "$triplet2ascii_file";
 	while ($t2a_line = <T2A>) {
@@ -536,7 +565,7 @@ if ($ASCII_USE>0) {
 			if ($BARCODE_PARTS[$barcode_pos] =~ /[ACGT]/) {$triplet_to_convert .= $BARCODE_PARTS[$barcode_pos]} else {$triplet_to_convert .= "_"};
 			$barcode_pos++;
 			if ($BARCODE_PARTS[$barcode_pos] =~ /[ACGT]/) {$triplet_to_convert .= $BARCODE_PARTS[$barcode_pos]} else {$triplet_to_convert .= "_"};
-			if (!defined $TRIPLET2ASCII{$triplet_to_convert}) {die "ERROR: triplet $triplet_to_convert in barcode $_[0] cannot be converted!\n"};
+			if (!defined $TRIPLET2ASCII{$triplet_to_convert}) {die "ERROR: Triplet $triplet_to_convert in barcode $_[0] cannot be converted!\n"};
 			$collapsed_out .= $TRIPLET2ASCII{$triplet_to_convert};
 		}
 		return $collapsed_out;
@@ -592,9 +621,10 @@ if (defined $opt{'V'}) {print STDERR "INFO: Generating hamming hashes ...\n"};
 foreach $mode (@MODES_LIST) {
 	foreach $index_number (keys %{$INDEX_FILES{$mode}{'index'}}) {
 		$trim_warn = 0;
-		if (defined $opt{'V'}) {print STDERR "INFO: Mode: $mode, Index: $index_number, File = $INDEX_FILES{$mode}{'index'}{$index_number}\n"};
-		if (-e "$INDEX_FILES{$mode}{'index'}{$index_number}") {} else {die "ERROR: File: $INDEX_FILES{$mode}{'index'}{$index_number} does not exist!\n"};
-		open IN, "$INDEX_FILES{$mode}{'index'}{$index_number}";
+		$idx_f = resolve_path($INDEX_FILES{$mode}{'index'}{$index_number});
+		if (defined $opt{'V'}) {print STDERR "INFO: Mode: $mode, Index: $index_number, File = $idx_f\n"};
+		# if (-e "$INDEX_FILES{$mode}{'index'}{$index_number}") {} else {die "ERROR: File: $INDEX_FILES{$mode}{'index'}{$index_number} does not exist!\n"};
+		open IN, "$idx_f";
 		while ($l = <IN>) {
 			chomp $l;
 			@P = split(/\t/, $l);
@@ -685,7 +715,7 @@ foreach $mode (@MODES_LIST) {
 
 # set up output fastq files
 
-system("mkdir $dex_path/$out_name");
+system("mkdir -p $dex_path/$out_name");
 
 foreach $mode (@MODES_LIST) {
 	if (defined $MODE_ANNOT{$mode}) {
@@ -738,7 +768,7 @@ if ($index2_fastq ne "null") {open I2IN, "$zcat $index2_fastq |"; open FAILI2, "
 if (defined $opt{'V'}) {print STDERR "INFO: Pulling reads and matching to indexes...\n"};
 
 # parse fastq lines in order of listed modes
-%MODE_assigned = (); $total_reads = 0;
+%MODE_assigned = (); $total_reads = 0; $assigned = 0;
 while ($in_tag[1] = <R1IN>) {
 	$total_reads++;
 	
@@ -1016,9 +1046,11 @@ sub close_all_files {
 
 # print report
 open RPT, ">$dex_path/$out_name/$out_name.unidex.report.txt";
-print RPT "Call: unidex $input_params\n";
-$pct = sprintf("%.2f", ($assigned/$total_reads)*100);
+print RPT "Call: $call\n";
+
+$pct = $total_reads ? sprintf("%.2f", ($assigned/$total_reads)*100) : "";
 print RPT "Total Reads = $total_reads\nTotal Assigned = $assigned ($pct%)\n";
+if ($assigned == 0) {close RPT; exit;}
 foreach $mode (@MODES_LIST) {
 	$pct = sprintf("%.2f", ($MODE_assigned{$mode}/$assigned)*100);
 	print RPT "Mode $mode Assigned = $MODE_assigned{$mode} ($pct%)\n";
@@ -1042,7 +1074,5 @@ foreach $mode (@MODES_LIST) {
 	}
 }
 close RPT;
-
-system("slack -F $dex_path/$out_name/$out_name.unidex.report.txt -c \"Unidex complete for run $run_name.\" sequencing_runs");
 
 exit;

@@ -222,6 +222,12 @@ $out_name = $opt{'O'}; $out_name =~ s/\/$//;
 $run_name = $opt{'R'}; $run_name =~ s/\/$//;
 if (defined $opt{'c'}) {$triplet2ascii_file = $opt{'c'}};
 
+if (defined $opt{'t'}) {
+	$zcat = "$pigz -dc -p $opt{'t'}";
+	$gzip = "$pigz -p $opt{'t'}";
+}
+
+
 # annotation loading
 if (defined $opt{'A'}) {
 	@ANNOT_FILES = split(/,/, $opt{'A'});
@@ -719,11 +725,7 @@ foreach $mode (@MODES_LIST) {
 		foreach $annot (keys %{$MODE_ANNOT{$mode}}) {
 			foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
 				$handle = "$mode.$annot.R$read_number";
-				if (defined $opt{'t'}) {
-					open $handle, "| $pigz -p $opt{'t'} > $dex_path/$out_name/$out_name.$mode.$annot.R$read_number.fq.gz";
-				} else {
-					open $handle, "| $gzip > $dex_path/$out_name/$out_name.$mode.$annot.R$read_number.fq.gz";
-				}
+				open $handle, "| $gzip > $dex_path/$out_name/$out_name.$mode.$annot.R$read_number.fq.gz";
 			}
 		}
 		foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
@@ -734,20 +736,12 @@ foreach $mode (@MODES_LIST) {
 		foreach $read_number (keys %{$DEX_PARTS{$mode}{'read'}}) {
 			if ($MODE_SPECIAL{$mode}{'batch_size'}<1) {
 				$handle = "$mode.R$read_number";
-				if (defined $opt{'t'}) {
-					open $handle, "| $pigz -p $opt{'t'} > $dex_path/$out_name/$out_name.$mode.R$read_number.fq.gz";
-				} else {
-					open $handle, "| $gzip > $dex_path/$out_name/$out_name.$mode.R$read_number.fq.gz";
-				}
+				open $handle, "| $gzip > $dex_path/$out_name/$out_name.$mode.R$read_number.fq.gz";
 			} else {
 				$MODE_SPECIAL{$mode}{'current_batch'} = sprintf("%03d", 1);
 				$MODE_SPECIAL{$mode}{'batch_increment'} = $MODE_SPECIAL{$mode}{'batch_size'};
 				$handle = "$mode.".$MODE_SPECIAL{$mode}{'current_batch'}.".R$read_number";
-				if (defined $opt{'t'}) {
-					open $handle, "| $pigz -p $opt{'t'} > $dex_path/$out_name/$out_name.$handle.fq.gz";
-				} else {
-					open $handle, "| $gzip > $dex_path/$out_name/$out_name.$handle.fq.gz";
-				}
+				open $handle, "| $gzip > $dex_path/$out_name/$out_name.$handle.fq.gz";
 			}
 		}
 	}

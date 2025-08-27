@@ -384,13 +384,13 @@ while ($l = <MODES>) {
 		@P = split(/\s/, $l);
 		$mode = $P[0];
 		if (defined $MODES{$mode}) {
-			if (defined $opt{'V'}) {print STDERR "INFO: Mode $mode found. Parsing...\n"};
+			{print STDERR "INFO: Mode $mode found. Parsing...\n"};
 			$MODES{$mode} = 1;
 			# parse the four reads and store information on components
 			%{$DEX_PARTS{$mode}} = ();
 			%{$INDEX_FILES{$mode}} = ();
 			for ($i = 1; $i <= 4; $i++) { # parse the four fastq reads
-				if (defined $opt{'V'}) {print STDERR "INFO: parsing read $i: $P[$i]\n"};
+				{print STDERR "INFO: parsing read $i: $P[$i]\n"};
 				if ($P[$i] =~ /unused/i) {
 					if (defined $opt{'V'}) {print STDERR "\t$HEADER[$i] is unused.\n"};
 				} else {
@@ -400,7 +400,7 @@ while ($l = <MODES>) {
 					@READ_PARTS = split(/,/, $P[$i]); # 1st split by comma to @READ_PARTS ($part)
 					for ($part = 0; $part < @READ_PARTS; $part++) {
 						($part_name,$part_length) = split(/:/, $READ_PARTS[$part]);  # 2nd split $part by colon to $part_name and $part_length
-						if (defined $opt{'V'}) {print STDERR "\tname = $part_name, length = $part_length\n"};
+						{print STDERR "\tname = $part_name, length = $part_length\n"};
 						if ($part_name =~ /read/i) { # if $part_name contains the substring "read" (case-insensitive).
 							$read_number = $part_name; $read_number =~ s/read//i; # $read_number is $part_name with "read" (case-insensitive) removed
 							if (!defined $DEX_PARTS{$mode}{'read'}{$read_number}) {
@@ -429,9 +429,9 @@ while ($l = <MODES>) {
 							} else {
 								$INDEX_HAMMING{$mode}{'index'}{$index_number} = $def_hd;
 							}
-							if (defined $opt{'V'}) {print STDERR "INFO: mode $mode, index number $index_number hamming distance set to: $INDEX_HAMMING{$mode}{'index'}{$index_number}.\n"};
+							{print STDERR "INFO: mode $mode, index number $index_number hamming distance set to: $INDEX_HAMMING{$mode}{'index'}{$index_number}.\n"};
 							if (!defined $DEX_PARTS{$mode}{'index'}{$index_number}) {
-								if (defined $opt{'V'}) {print STDERR "INFO: mode $mode, index number $index_number being stored.\n"};
+								{print STDERR "INFO: mode $mode, index number $index_number being stored.\n"};
 								if ($part_length =~ /sub/) {
 									($region_length,$index_length) = split(/sub/, $part_length);
 									$DEX_PARTS{$mode}{'subset'}{$index_number} = $index_length;
@@ -619,13 +619,13 @@ sub revcomp {
 
 # Generating hamming distance hashes
 
-if (defined $opt{'V'}) {print STDERR "INFO: Generating hamming hashes ...\n"};
+{print STDERR "INFO: Generating hamming hashes ...\n"};
 %MODE_IXN_CHECK_true = ();
 foreach $mode (@MODES_LIST) {
 	foreach $index_number (keys %{$INDEX_FILES{$mode}{'index'}}) {
 		$trim_warn = 0;
 		$idx_f = resolve_path($INDEX_FILES{$mode}{'index'}{$index_number});
-		if (defined $opt{'V'}) {print STDERR "INFO: Mode: $mode, Index: $index_number, File = $idx_f\n"};
+		{print STDERR "INFO: Mode: $mode, Index: $index_number, File = $idx_f\n"};
 		# if (-e "$INDEX_FILES{$mode}{'index'}{$index_number}") {} else {die "ERROR: File: $INDEX_FILES{$mode}{'index'}{$index_number} does not exist!\n"};
 		open IN, "$idx_f";
 		while ($l = <IN>) {
@@ -666,9 +666,9 @@ foreach $mode (@MODES_LIST) {
 		
 		# make HD hash
 		if ($INDEX_HAMMING{$mode}{'index'}{$index_number} > 0) {
-			if (defined $opt{'V'}) {print STDERR "\tIndex $index_number HD = $INDEX_HAMMING{$mode}{'index'}{$index_number}, making HD hash.\n"};
+			{print STDERR "\tIndex $index_number HD = $INDEX_HAMMING{$mode}{'index'}{$index_number}, making HD hash.\n"};
 			for ($hd_round = 1; $hd_round <= $INDEX_HAMMING{$mode}{'index'}{$index_number}; $hd_round++) {
-				if (defined $opt{'V'}) {print STDERR "\t\tHD Round = $hd_round\n"};
+				{print STDERR "\t\tHD Round = $hd_round\n"};
 				%HDSEQ_true = ();
 				foreach $seq (keys %{$MODE_IXN_CHECK_true{$mode}{$index_number}}) {
 					$true = $MODE_IXN_CHECK_true{$mode}{$index_number}{$seq};
@@ -711,7 +711,7 @@ foreach $mode (@MODES_LIST) {
 				}
 			}
 		} else {
-			if (defined $opt{'V'}) {print STDERR "\t\tIndex $index_number has a hamming of 0, so only exact matches will be considered.\n"};
+			{print STDERR "\t\tIndex $index_number has a hamming of 0, so only exact matches will be considered.\n"};
 		}
 	}
 }
@@ -756,7 +756,7 @@ if ($index2_fastq ne "null") {open I2IN, "$zcat $index2_fastq |"; open FAILI2, "
 
 # read 1 = 1, index 1 = 2, index 2 = 3, read 2 = 4
 
-if (defined $opt{'V'}) {print STDERR "INFO: Pulling reads and matching to indexes...\n"};
+{print STDERR "INFO: Pulling reads and matching to indexes...\n"};
 
 # parse fastq lines in order of listed modes
 %MODE_assigned = (); $total_reads = 0; $assigned = 0;

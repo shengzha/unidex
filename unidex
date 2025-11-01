@@ -665,6 +665,9 @@ foreach $mode (@MODES_LIST) {
 		} close IN;
 		
 		# make HD hash
+		# For each sequence, the code generates Hamming distance variants by substituting bases.
+		# The number of substitutions allowed is controlled by $INDEX_HAMMING{$mode}{'index'}{$index_number}. 
+		# For each base in the sequence, it generates all possible base swaps (e.g., A <-> T, C <-> G).
 		if ($INDEX_HAMMING{$mode}{'index'}{$index_number} > 0) {
 			{print STDERR "\tIndex $index_number HD = $INDEX_HAMMING{$mode}{'index'}{$index_number}, making HD hash.\n"};
 			for ($hd_round = 1; $hd_round <= $INDEX_HAMMING{$mode}{'index'}{$index_number}; $hd_round++) {
@@ -673,12 +676,14 @@ foreach $mode (@MODES_LIST) {
 				foreach $seq (keys %{$MODE_IXN_CHECK_true{$mode}{$index_number}}) {
 					$true = $MODE_IXN_CHECK_true{$mode}{$index_number}{$seq};
 					#if (defined $opt{'V'}) {print STDERR "True = $true, permuting... (HD round $hd_round)\n"}; 
-					@SEQ = split(//, $seq);
+					@SEQ = split(//, $seq); # splits a string into an array of individual characters
 					for ($ix_base = 0; $ix_base < @SEQ; $ix_base++) {
 						foreach $swap_base (keys %{$OTHER_BASES{$SEQ[$ix_base]}}) {
 							@NEW = @SEQ;
 							$NEW[$ix_base] = $swap_base;
 							$new = join("", @NEW);
+							# If the generated sequence is new and doesn't already exist in the hash, it is added. 
+							# If a sequence has been previously observed with a different "true" value, it's marked as a collision.
 							if (!defined $HDSEQ_true{$new} && !defined $MODE_IXN_CHECK_true{$mode}{$index_number}{$new}) { # do not include if there is a lesser version
 								$HDSEQ_true{$new} = $true;
 								#if (defined $opt{'V'}) {print STDERR "\t\tAdding HD = $new to True = $true.\n"};
@@ -704,6 +709,8 @@ foreach $mode (@MODES_LIST) {
 					}
 				}
 				# now load to the main hash & check they have not been observed with conflict
+				# After processing all Hamming distance rounds, 
+				# the code updates the main hash %MODE_IXN_CHECK_true with the valid (non-colliding) sequences.
 				foreach $seq (keys %HDSEQ_true) {
 					if ($HDSEQ_true{$seq} !~ /collision/) {
 						$MODE_IXN_CHECK_true{$mode}{$index_number}{$seq} = $HDSEQ_true{$seq};
